@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>This City Wasn't Built for Me</title>
+  <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+  <style>
+    body{margin:0;overflow:hidden;font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#0f141b}
+    .panel{position:absolute;left:50%;transform:translateX(-50%);z-index:20;background:rgba(247,250,252,.96);color:#11202b;border-radius:18px;box-shadow:0 16px 42px rgba(0,0,0,.22);padding:22px;width:min(900px,92vw);max-height:84vh;overflow:auto}
+    #introPanel,#personaPanel,#taskPanel,#resultPanel{top:40px}#personaPanel,#taskPanel,#eventPanel,#resultPanel{display:none}#eventPanel{bottom:24px;width:min(780px,90vw)}
+    h1,h2,h3{margin:0 0 14px;font-weight:700}p{line-height:1.65;margin:8px 0 12px}.buttonRow{display:grid;gap:10px;margin-top:14px}.cardGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}
+    button{border:none;border-radius:12px;padding:13px 15px;background:linear-gradient(135deg,#1c5b8f,#2b7dbb);color:#fff;font-size:15px;cursor:pointer}.secondary{background:linear-gradient(135deg,#7e8e9b,#697985)}
+    .card{border:1px solid #d7e1e8;border-radius:16px;padding:14px;background:linear-gradient(180deg,#fff,#f7fafc);cursor:pointer;transition:.2s}.card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.08)}.card.selected{border:2px solid #1c5b8f;background:#e8f3fb}
+    .small{font-size:14px;color:#566674}.badge{display:inline-block;margin:0 8px 6px 0;padding:4px 10px;border-radius:999px;background:#e8f1f8;color:#1d506f;font-size:13px;font-weight:600}
+    #hud,#tipsBox{position:absolute;z-index:15;background:rgba(244,247,251,.93);color:#13202d;border-radius:16px;padding:14px 16px;box-shadow:0 10px 28px rgba(0,0,0,.18);backdrop-filter:blur(10px);display:none}
+    #hud{top:14px;left:14px;width:344px;line-height:1.55}#tipsBox{right:14px;top:14px;width:290px;font-size:14px;line-height:1.58}#goalHint{margin-top:10px;padding-top:10px;border-top:1px solid #d3dde6;font-size:14px;color:#425361}
+    .advisorBox{background:linear-gradient(180deg,#f6f9fb,#f1f6fa);border:1px solid #dbe6ee;border-radius:14px;padding:14px;margin-top:14px}#crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid rgba(255,255,255,.92);border-radius:50%;z-index:12;pointer-events:none;display:none;box-shadow:0 0 12px rgba(255,255,255,.45)}
+  </style>
+</head>
+<body>
+  <div id="introPanel" class="panel">
+<button onclick="playMusic()">Play Music</button>
+
+<audio id="bgm" src="assets/bgm.mp3" loop></audio>
+
+<script>
+function playMusic() {
+  document.getElementById("bgm").play();
+}
+</script>
+    <h1>This City Wasn't Built for Me</h1>
+    <p><strong>Welcome to Stardew City — the same city, but never the same journey.</strong></p>
+    <p>Enter a fictional modern city at dusk, complete one everyday task, and see how the same urban route changes depending on who you are.</p>
+    <p>Your choices affect <strong>travel time</strong>, <strong>stress level</strong>, and the final <strong>city friendliness score</strong>.</p>
+    <div class="buttonRow"><button onclick="goToPersonaSelection()">Enter Stardew City</button></div>
+  </div>
+  <div id="personaPanel" class="panel">
+    <h2>Choose Your Persona</h2>
+    <p>Select one urban resident and experience the same city from their perspective.</p>
+    <div class="cardGrid" id="personaCards"></div>
+    <div class="buttonRow"><button onclick="confirmPersona()">Continue to Task Selection</button><button class="secondary" onclick="backToIntro()">Back</button></div>
+  </div>
+  <div id="taskPanel" class="panel">
+    <h2>Choose Your Task</h2>
+    <p>Select one daily task. Each task has a continuous blue route with directional arrows.</p>
+    <div class="cardGrid" id="taskCards"></div>
+    <div class="buttonRow"><button onclick="startSimulation()">Start Simulation</button><button class="secondary" onclick="backToPersona()">Back</button></div>
+  </div>
+  <div id="eventPanel" class="panel"><h3 id="eventTitle">Event</h3><p id="eventText"></p><div class="buttonRow" id="eventChoices"></div></div>
+  <div id="resultPanel" class="panel">
+    <h2>Journey Complete</h2><p id="resultSummary"></p>
+    <div class="advisorBox"><h3>AI Planning Advisor Report</h3><p id="advisorIntro"></p><ul id="advisorList"></ul><p id="advisorClosing"></p></div>
+    <div class="advisorBox"><h3>Replay Insight</h3><p>Try the same task again with another persona. Same city, different lives.</p></div>
+    <div class="buttonRow"><button onclick="restartGame()">Play Again</button></div>
+  </div>
+  <div id="hud">
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px">Stardew City HUD</div>
+    <div><strong>Persona:</strong> <span id="hudPersona">-</span></div><div><strong>Task:</strong> <span id="hudTask">-</span></div>
+    <div><strong>Time:</strong> <span id="hudTime">0</span></div><div><strong>Stress:</strong> <span id="hudStress">0</span> / 10</div>
+    <div><strong>Friendliness Score:</strong> <span id="hudScore">10</span> / 10</div><div><strong>Triggered Events:</strong> <span id="hudEvents">0</span></div>
+    <div id="goalHint">Use <strong>W A S D</strong> to move and the mouse to look around. Follow the blue route arrows, watch for red event markers, and reach the floating yellow star.</div>
+  </div>
+  <div id="tipsBox"><strong>Controls</strong><br/>W A S D = move<br/>Mouse = look around<br/>Blue arrows = route direction<br/>Red arrows = event points<br/>Yellow star = destination</div>
+  <div id="crosshair"></div>
+
+  <a-scene fog="type: linear; color: #e0a57d; near: 95; far: 235" renderer="antialias: true; colorManagement: true">
+    <a-sky color="#f0b183"></a-sky>
+    <a-entity light="type: ambient; intensity: 0.78; color: #ffe2c4"></a-entity>
+    <a-entity light="type: directional; intensity: 0.58; color: #ffd1a0" position="18 26 10"></a-entity>
+    <a-entity light="type: hemisphere; intensity: 0.5; color: #ffd9ba; groundColor: #6a6f74"></a-entity>
+    <a-plane position="0 0 0" rotation="-90 0 0" width="320" height="320" color="#75806e"></a-plane>
+
+    <a-sphere position="-72 42 -156" radius="6.2" color="#ffd9a6" opacity="0.94"></a-sphere>
+    <a-circle position="-72 41.8 -151" radius="10.5" color="#ffd2a0" opacity="0.18"></a-circle>
+    <a-circle position="-72 41.7 -150" radius="16" color="#ffc994" opacity="0.08"></a-circle>
+
+    <a-entity position="-54 31 -72" animation="property: position; to: 64 31 -92; dur: 65000; loop: true; easing: linear"><a-sphere position="-3 0 0" radius="3.6" color="#fff1dd" opacity="0.9"></a-sphere><a-sphere position="0 1.1 0.4" radius="4.8" color="#fff5e7" opacity="0.92"></a-sphere><a-sphere position="4 0.5 0" radius="3.9" color="#fff1dd" opacity="0.88"></a-sphere></a-entity>
+    <a-entity position="48 36 -38" animation="property: position; to: -70 36 -58; dur: 72000; loop: true; easing: linear"><a-sphere position="-4 0.3 0" radius="3.1" color="#fff1de" opacity="0.88"></a-sphere><a-sphere position="0 1 0.2" radius="4.2" color="#fff7ec" opacity="0.92"></a-sphere><a-sphere position="4.2 0.2 0.1" radius="3.4" color="#fff1de" opacity="0.88"></a-sphere></a-entity>
+    <a-entity position="-12 28 -118" animation="property: position; to: 86 28 -104; dur: 86000; loop: true; easing: linear"><a-sphere position="-2.8 0 0" radius="2.8" color="#ffefd8" opacity="0.84"></a-sphere><a-sphere position="0 0.8 0.1" radius="3.7" color="#fff6e8" opacity="0.9"></a-sphere><a-sphere position="3.5 0.1 0" radius="2.9" color="#ffefd8" opacity="0.84"></a-sphere></a-entity>
+
+    <a-box position="0 0.01 -32" width="20" height="0.03" depth="150" color="#34373d"></a-box>
+    <a-box position="10 0.01 -36" width="106" height="0.03" depth="20" color="#34373d"></a-box>
+    <a-box position="-10 0.01 -84" width="96" height="0.03" depth="20" color="#34373d"></a-box>
+    <a-box position="38 0.01 -84" width="20" height="0.03" depth="70" color="#34373d"></a-box>
+    <a-box position="-40 0.01 -90" width="20" height="0.03" depth="62" color="#34373d"></a-box>
+    <a-box position="19 0.01 -60" width="18" height="0.03" depth="56" color="#34373d"></a-box>
+    <a-box position="-20 0.01 -60" width="18" height="0.03" depth="56" color="#34373d"></a-box>
+
+    <a-box position="-14 0.05 -32" width="4" height="0.06" depth="150" color="#d8dde2"></a-box><a-box position="14 0.05 -32" width="4" height="0.06" depth="150" color="#d8dde2"></a-box>
+    <a-box position="10 0.05 -22" width="106" height="0.06" depth="4" color="#d8dde2"></a-box><a-box position="10 0.05 -50" width="106" height="0.06" depth="4" color="#d8dde2"></a-box>
+    <a-box position="-10 0.05 -70" width="96" height="0.06" depth="4" color="#d8dde2"></a-box><a-box position="-10 0.05 -98" width="96" height="0.06" depth="4" color="#d8dde2"></a-box>
+    <a-box position="24 0.05 -84" width="4" height="0.06" depth="70" color="#d8dde2"></a-box><a-box position="52 0.05 -84" width="4" height="0.06" depth="70" color="#d8dde2"></a-box>
+    <a-box position="-26 0.05 -90" width="4" height="0.06" depth="62" color="#d8dde2"></a-box><a-box position="-54 0.05 -90" width="4" height="0.06" depth="62" color="#d8dde2"></a-box>
+    <a-box position="0 0.04 -32" width="0.3" height="0.02" depth="150" color="#d6bb66"></a-box><a-box position="10 0.04 -36" width="106" height="0.02" depth="0.3" color="#d6bb66"></a-box><a-box position="-10 0.04 -84" width="96" height="0.02" depth="0.3" color="#d6bb66"></a-box><a-box position="38 0.04 -84" width="0.3" height="0.02" depth="70" color="#d6bb66"></a-box><a-box position="-40 0.04 -90" width="0.3" height="0.02" depth="62" color="#d6bb66"></a-box>
+
+    <a-circle position="0 0.04 -28" rotation="-90 0 0" radius="10" color="#bfc4c8"></a-circle><a-circle position="0 0.05 -28" rotation="-90 0 0" radius="6.3" color="#cfd5d8"></a-circle><a-text value="Community Square" position="-7 5.2 -26" color="#1f1f1f" scale="5 5 5"></a-text>
+    <a-circle position="-40 0.04 -100" rotation="-90 0 0" radius="22" color="#5d9a63"></a-circle><a-circle position="-40 0.05 -100" rotation="-90 0 0" radius="13" color="#76b57b"></a-circle><a-text value="Park" position="-44 8 -97" color="#1f1f1f" scale="8 8 8"></a-text>
+    <!-- Buildings with commercial podiums -->
+    <a-entity position="-28 0 16">
+      <a-box position="0 7 0" width="18" height="14" depth="16" material="color:#dbe3ea;metalness:.15;roughness:.7"></a-box>
+      <a-box position="0 1.7 8.22" width="17" height="3.4" depth="0.22" color="#5f6f7d"></a-box>
+      <a-box position="0 3.8 8.45" width="17.6" height="0.25" depth="1.4" color="#4f6877"></a-box>
+      <a-box position="-8 7 8.18" width="0.18" height="14" depth="0.2" color="#7fd6ff"></a-box>
+      <a-box position="8 7 8.18" width="0.18" height="14" depth="0.2" color="#7fd6ff"></a-box>
+      <a-box position="-5 1.7 8.35" width="4.4" height="2.7" depth="0.12" color="#a9d4ea" opacity=".92"></a-box>
+      <a-box position="0 1.7 8.35" width="4.4" height="2.7" depth="0.12" color="#a9d4ea" opacity=".92"></a-box>
+      <a-box position="5 1.7 8.35" width="4.4" height="2.7" depth="0.12" color="#a9d4ea" opacity=".92"></a-box>
+      <a-text value="MARKET" position="-4.8 4.45 8.62" color="#ffffff" scale="2.8 2.8 2.8"></a-text>
+      <a-entity light="type: point; intensity: 0.32; distance: 18; color: #7fd6ff" position="0 4.5 8"></a-entity>
+      <a-box position="0 10 8.1" width="15" height="0.25" depth="0.35" color="#8fbad6"></a-box><a-box position="0 6.4 8.1" width="15" height="0.25" depth="0.35" color="#8fbad6"></a-box>
+    </a-entity>
+
+    <a-entity position="2 0 18">
+      <a-box position="0 8 0" width="18" height="16" depth="18" material="color:#d6dee5;metalness:.18;roughness:.68"></a-box>
+      <a-box position="0 1.7 9.22" width="17" height="3.4" depth="0.22" color="#556572"></a-box>
+      <a-box position="0 3.85 9.45" width="17.4" height="0.25" depth="1.3" color="#6e4f4a"></a-box>
+      <a-box position="-8 8 9.18" width="0.18" height="16" depth="0.2" color="#ffc487"></a-box>
+      <a-box position="8 8 9.18" width="0.18" height="16" depth="0.2" color="#ffc487"></a-box>
+      <a-box position="-5 1.7 9.35" width="4.4" height="2.7" depth="0.12" color="#b4ddf1" opacity=".92"></a-box>
+      <a-box position="0 1.7 9.35" width="4.4" height="2.7" depth="0.12" color="#b4ddf1" opacity=".92"></a-box>
+      <a-box position="5 1.7 9.35" width="4.4" height="2.7" depth="0.12" color="#b4ddf1" opacity=".92"></a-box>
+      <a-text value="BAKERY" position="-4.7 4.5 9.62" color="#fff4de" scale="2.6 2.6 2.6"></a-text>
+      <a-entity light="type: point; intensity: 0.3; distance: 18; color: #ffd3a1" position="0 4.6 9"></a-entity>
+      <a-box position="0 13 9.1" width="14" height="0.26" depth="0.3" color="#87c0e2"></a-box><a-box position="0 8 9.1" width="14" height="0.26" depth="0.3" color="#87c0e2"></a-box><a-box position="0 4 9.1" width="14" height="0.26" depth="0.3" color="#87c0e2"></a-box>
+    </a-entity>
+
+    <a-entity position="34 0 14">
+      <a-box position="0 11 0" width="16" height="22" depth="16" material="color:#ccd5de;metalness:.2;roughness:.65"></a-box>
+      <a-box position="0 1.7 8.22" width="15" height="3.4" depth="0.22" color="#4b5964"></a-box>
+      <a-box position="0 3.8 8.46" width="15.5" height="0.25" depth="1.2" color="#1f6d73"></a-box>
+      <a-box position="-7 11 8.16" width="0.18" height="22" depth="0.2" color="#82f2df"></a-box>
+      <a-box position="7 11 8.16" width="0.18" height="22" depth="0.2" color="#82f2df"></a-box>
+      <a-box position="-4.3 1.7 8.35" width="3.6" height="2.7" depth="0.12" color="#a5d6ef" opacity=".92"></a-box>
+      <a-box position="0 1.7 8.35" width="3.6" height="2.7" depth="0.12" color="#a5d6ef" opacity=".92"></a-box>
+      <a-box position="4.3 1.7 8.35" width="3.6" height="2.7" depth="0.12" color="#a5d6ef" opacity=".92"></a-box>
+      <a-text value="PHARMACY" position="-6.4 4.45 8.62" color="#d8fff7" scale="2.1 2.1 2.1"></a-text>
+      <a-entity light="type: point; intensity: 0.34; distance: 18; color: #82f2df" position="0 4.4 8"></a-entity>
+      <a-box position="0 18 8.1" width="12" height="0.24" depth="0.3" color="#8cc5e9"></a-box><a-box position="0 12 8.1" width="12" height="0.24" depth="0.3" color="#8cc5e9"></a-box><a-box position="0 6 8.1" width="12" height="0.24" depth="0.3" color="#8cc5e9"></a-box>
+    </a-entity>
+
+    <a-entity position="-20 0 -12">
+      <a-box position="0 16 0" width="18" height="32" depth="18" material="color:#d9e2ea;metalness:.22;roughness:.62"></a-box>
+      <a-box position="0 1.9 9.22" width="17" height="3.8" depth="0.22" color="#4f5964"></a-box>
+      <a-box position="0 4.25 9.5" width="17.5" height="0.28" depth="1.35" color="#805b3d"></a-box>
+      <a-box position="-8 16 9.16" width="0.18" height="32" depth="0.2" color="#ffcf89"></a-box>
+      <a-box position="8 16 9.16" width="0.18" height="32" depth="0.2" color="#ffcf89"></a-box>
+      <a-box position="-5 1.9 9.34" width="4.2" height="3" depth="0.12" color="#a2d1e7" opacity=".94"></a-box>
+      <a-box position="0 1.9 9.34" width="4.2" height="3" depth="0.12" color="#a2d1e7" opacity=".94"></a-box>
+      <a-box position="5 1.9 9.34" width="4.2" height="3" depth="0.12" color="#a2d1e7" opacity=".94"></a-box>
+      <a-text value="COFFEE" position="-4.8 4.95 9.68" color="#fff1da" scale="2.5 2.5 2.5"></a-text>
+      <a-entity light="type: point; intensity: 0.34; distance: 18; color: #ffcf89" position="0 5 9.1"></a-entity>
+      <a-box position="0 27 9.1" width="14" height="0.3" depth="0.3" color="#96caea"></a-box><a-box position="0 19 9.1" width="14" height="0.3" depth="0.3" color="#96caea"></a-box><a-box position="0 11 9.1" width="14" height="0.3" depth="0.3" color="#96caea"></a-box>
+    </a-entity>
+
+    <a-entity position="16 0 -14">
+      <a-box position="0 18 0" width="22" height="36" depth="20" material="color:#d0dae3;metalness:.24;roughness:.58"></a-box>
+      <a-box position="0 2.1 10.22" width="20.5" height="4.2" depth="0.22" color="#54616b"></a-box>
+      <a-box position="0 4.7 10.52" width="21" height="0.3" depth="1.45" color="#335f86"></a-box>
+      <a-box position="-10 18 10.16" width="0.2" height="36" depth="0.2" color="#76c7ff"></a-box>
+      <a-box position="10 18 10.16" width="0.2" height="36" depth="0.2" color="#76c7ff"></a-box>
+      <a-box position="-6.2 2.1 10.35" width="4.6" height="3.3" depth="0.12" color="#a6d4eb" opacity=".94"></a-box>
+      <a-box position="0 2.1 10.35" width="4.6" height="3.3" depth="0.12" color="#a6d4eb" opacity=".94"></a-box>
+      <a-box position="6.2 2.1 10.35" width="4.6" height="3.3" depth="0.12" color="#a6d4eb" opacity=".94"></a-box>
+      <a-text value="CITY HALL" position="-6.7 5.35 10.75" color="#eff8ff" scale="2.6 2.6 2.6"></a-text>
+      <a-entity light="type: point; intensity: 0.28; distance: 20; color: #76c7ff" position="0 5.2 10"></a-entity>
+      <a-box position="0 30 10.1" width="18" height="0.34" depth="0.3" color="#89c5eb"></a-box><a-box position="0 20 10.1" width="18" height="0.34" depth="0.3" color="#89c5eb"></a-box><a-box position="0 10 10.1" width="18" height="0.34" depth="0.3" color="#89c5eb"></a-box>
+    </a-entity>
+
+    <a-entity position="-38 0 -40">
+      <a-box position="0 8 0" width="24" height="16" depth="20" material="color:#dde3e8;metalness:.12;roughness:.74"></a-box>
+      <a-box position="0 2 10.2" width="17" height="4" depth="0.28" color="#4b5561"></a-box>
+      <a-box position="0 9.2 10.1" width="12" height="1.6" depth="0.3" color="#1c5b8f"></a-box>
+      <a-box position="0 3.8 10.45" width="18" height="0.26" depth="1.2" color="#395b77"></a-box>
+      <a-box position="-9 8 10.16" width="0.18" height="16" depth="0.18" color="#77c5ff"></a-box>
+      <a-box position="9 8 10.16" width="0.18" height="16" depth="0.18" color="#77c5ff"></a-box>
+      <a-box position="-6 2.05 10.32" width="3.4" height="3.2" depth="0.12" color="#9fd0e7" opacity=".93"></a-box>
+      <a-box position="0 2.05 10.32" width="3.4" height="3.2" depth="0.12" color="#9fd0e7" opacity=".93"></a-box>
+      <a-box position="6 2.05 10.32" width="3.4" height="3.2" depth="0.12" color="#9fd0e7" opacity=".93"></a-box>
+      <a-text value="METRO" position="-5.8 10.9 10.4" color="#fff" scale="4 4 4"></a-text>
+      <a-entity light="type: point; intensity: 0.3; distance: 20; color: #77c5ff" position="0 4.2 10"></a-entity>
+    </a-entity>
+
+    <a-entity position="38 0 -92">
+      <a-box position="0 14 0" width="28" height="28" depth="26" material="color:#e7edf2;metalness:.15;roughness:.7"></a-box>
+      <a-box position="0 3 13.2" width="10" height="5.8" depth="0.3" color="#657382"></a-box>
+      <a-box position="0 20 13.1" width="20" height="1.4" depth="0.35" color="#e35d5d"></a-box>
+      <a-box position="0 20 13.25" width="1.2" height="4.2" depth="0.2" color="#fff"></a-box>
+      <a-box position="0 20 13.25" width="4.2" height="1.2" depth="0.2" color="#fff"></a-box>
+      <a-box position="-12 14 13.16" width="0.2" height="28" depth="0.2" color="#8ad7ff"></a-box>
+      <a-box position="12 14 13.16" width="0.2" height="28" depth="0.2" color="#8ad7ff"></a-box>
+      <a-box position="0 4.6 13.5" width="12" height="0.26" depth="1.4" color="#7d8da1"></a-box>
+      <a-box position="-4 2.2 13.35" width="3.5" height="3.6" depth="0.12" color="#b2dff0" opacity=".95"></a-box>
+      <a-box position="0 2.2 13.35" width="3.5" height="3.6" depth="0.12" color="#b2dff0" opacity=".95"></a-box>
+      <a-box position="4 2.2 13.35" width="3.5" height="3.6" depth="0.12" color="#b2dff0" opacity=".95"></a-box>
+      <a-entity light="type: point; intensity: 0.32; distance: 24; color: #9adfff" position="0 5 13"></a-entity>
+    </a-entity>
+
+    <a-entity position="10 0 -58">
+      <a-box position="0 8 0" width="14" height="16" depth="14" material="color:#eef1f4;metalness:.08;roughness:.78"></a-box>
+      <a-box position="0 1.8 7.22" width="13" height="3.6" depth="0.2" color="#4b545e"></a-box>
+      <a-box position="0 4 7.45" width="13.4" height="0.24" depth="1.1" color="#7a5f46"></a-box>
+      <a-box position="-6.2 8 7.16" width="0.16" height="16" depth="0.18" color="#ffc786"></a-box>
+      <a-box position="6.2 8 7.16" width="0.16" height="16" depth="0.18" color="#ffc786"></a-box>
+      <a-box position="-4 1.8 7.32" width="3.1" height="2.9" depth="0.12" color="#b5dcf0" opacity=".93"></a-box>
+      <a-box position="0 1.8 7.32" width="3.1" height="2.9" depth="0.12" color="#b5dcf0" opacity=".93"></a-box>
+      <a-box position="4 1.8 7.32" width="3.1" height="2.9" depth="0.12" color="#b5dcf0" opacity=".93"></a-box>
+      <a-text value="DINER" position="-4.4 4.75 7.62" color="#fff" scale="2.6 2.6 2.6"></a-text>
+      <a-entity light="type: point; intensity: 0.3; distance: 16; color: #ffca84" position="0 4.5 7"></a-entity>
+    </a-entity>
+
+    <a-entity position="-64 0 8">
+      <a-box position="0 20 0" width="22" height="40" depth="18" material="color:#cfd6df;metalness:.22;roughness:.56"></a-box>
+      <a-box position="0 40.5 0" width="22.8" height="1" depth="18.8" color="#dde5ec"></a-box>
+      <a-box position="0 21 9.15" width="16.6" height="32" depth="0.16" color="#88aeca" opacity=".86"></a-box>
+      <a-box position="-8 21 9.12" width="0.18" height="32.4" depth="0.1" color="#e6eef4"></a-box><a-box position="-4 21 9.12" width="0.18" height="32.4" depth="0.1" color="#e6eef4"></a-box><a-box position="0 21 9.12" width="0.18" height="32.4" depth="0.1" color="#e6eef4"></a-box><a-box position="4 21 9.12" width="0.18" height="32.4" depth="0.1" color="#e6eef4"></a-box><a-box position="8 21 9.12" width="0.18" height="32.4" depth="0.1" color="#e6eef4"></a-box>
+    </a-entity>
+    <a-entity position="-80 0 -30">
+      <a-box position="0 28 0" width="18" height="56" depth="18" material="color:#d7dde5;metalness:.24;roughness:.54"></a-box>
+      <a-box position="0 57 0" width="18.8" height="1" depth="18.8" color="#e7edf2"></a-box>
+      <a-box position="0 29 9.12" width="13.6" height="48" depth="0.16" color="#82a8c1" opacity=".87"></a-box>
+    </a-entity>
+    <a-entity position="-58 0 -74">
+      <a-box position="0 24 0" width="18" height="48" depth="18" material="color:#c8d0d9;metalness:.22;roughness:.58"></a-box>
+      <a-box position="0 24 9.12" width="13.5" height="40" depth="0.16" color="#86abc4" opacity=".86"></a-box>
+    </a-entity>
+    <a-entity position="-8 0 -138">
+      <a-box position="0 34 0" width="22" height="68" depth="20" material="color:#dbe1e7;metalness:.24;roughness:.52"></a-box>
+      <a-box position="0 68.8 0" width="22.8" height="1.1" depth="20.8" color="#e7edf2"></a-box>
+      <a-box position="0 35 10.15" width="16.8" height="56" depth="0.16" color="#7da5c1" opacity=".88"></a-box>
+      <a-box position="-8.1 35 10.12" width="0.18" height="56.4" depth="0.1" color="#edf3f7"></a-box><a-box position="-4.05 35 10.12" width="0.18" height="56.4" depth="0.1" color="#edf3f7"></a-box><a-box position="0 35 10.12" width="0.18" height="56.4" depth="0.1" color="#edf3f7"></a-box><a-box position="4.05 35 10.12" width="0.18" height="56.4" depth="0.1" color="#edf3f7"></a-box><a-box position="8.1 35 10.12" width="0.18" height="56.4" depth="0.1" color="#edf3f7"></a-box>
+    </a-entity>
+    <a-entity position="28 0 -150">
+      <a-box position="0 38 0" width="18" height="76" depth="18" material="color:#edf2f6;metalness:.25;roughness:.48"></a-box>
+      <a-box position="0 38 9.1" width="13.8" height="62" depth="0.16" color="#7ea3bb" opacity=".9"></a-box>
+    </a-entity>
+    <a-entity position="68 0 -132">
+      <a-box position="0 30 0" width="22" height="60" depth="20" material="color:#d5dce5;metalness:.25;roughness:.5"></a-box>
+      <a-box position="0 30 10.15" width="16.8" height="50" depth="0.16" color="#84a8c1" opacity=".88"></a-box>
+    </a-entity>
+    <a-entity position="88 0 -52">
+      <a-box position="0 24 0" width="18" height="48" depth="18" material="color:#d1d8e0;metalness:.22;roughness:.54"></a-box>
+      <a-box position="0 24 9.1" width="13.5" height="40" depth="0.16" color="#85abc6" opacity=".86"></a-box>
+    </a-entity>
+    <a-entity position="64 0 4">
+      <a-box position="0 18 0" width="20" height="36" depth="18" material="color:#d7dee5;metalness:.18;roughness:.62"></a-box>
+      <a-box position="0 18 9.1" width="15" height="29" depth="0.16" color="#8db2ca" opacity=".84"></a-box>
+    </a-entity>
+    <a-entity position="-94 0 18">
+      <a-box position="0 15 0" width="18" height="30" depth="18" material="color:#cfd6de;metalness:.2;roughness:.58"></a-box>
+      <a-box position="0 15 9.08" width="13.4" height="24" depth="0.16" color="#88adc6" opacity=".84"></a-box>
+    </a-entity>
+    <a-entity position="-102 0 -10">
+      <a-box position="0 24 0" width="16" height="48" depth="16" material="color:#d7dde5;metalness:.24;roughness:.54"></a-box>
+      <a-box position="0 24 8.08" width="12" height="38" depth="0.16" color="#7ea4bf" opacity=".88"></a-box>
+    </a-entity>
+    <a-entity position="-96 0 -58">
+      <a-box position="0 18 0" width="20" height="36" depth="18" material="color:#d3dae2;metalness:.22;roughness:.56"></a-box>
+      <a-box position="0 18 9.08" width="14.8" height="28" depth="0.16" color="#84aac4" opacity=".86"></a-box>
+    </a-entity>
+    <a-entity position="-90 0 -104">
+      <a-box position="0 28 0" width="18" height="56" depth="18" material="color:#dce2e8;metalness:.24;roughness:.52"></a-box>
+      <a-box position="0 28 9.08" width="13.6" height="46" depth="0.16" color="#80a6c0" opacity=".88"></a-box>
+    </a-entity>
+    <a-entity position="-70 0 -144">
+      <a-box position="0 22 0" width="20" height="44" depth="18" material="color:#d6dde5;metalness:.23;roughness:.55"></a-box>
+      <a-box position="0 22 9.08" width="15" height="34" depth="0.16" color="#87acc5" opacity=".86"></a-box>
+    </a-entity>
+    <a-entity position="-36 0 -150">
+      <a-box position="0 26 0" width="18" height="52" depth="18" material="color:#d5dbe3;metalness:.24;roughness:.53"></a-box>
+      <a-box position="0 26 9.08" width="13.5" height="42" depth="0.16" color="#82a8c2" opacity=".87"></a-box>
+    </a-entity>
+    <a-entity position="6 0 -162">
+      <a-box position="0 30 0" width="20" height="60" depth="18" material="color:#e0e5ea;metalness:.25;roughness:.5"></a-box>
+      <a-box position="0 30 9.08" width="15.2" height="48" depth="0.16" color="#7ea4bd" opacity=".9"></a-box>
+    </a-entity>
+    <a-entity position="48 0 -160">
+      <a-box position="0 24 0" width="18" height="48" depth="18" material="color:#d7dde4;metalness:.23;roughness:.54"></a-box>
+      <a-box position="0 24 9.08" width="13.4" height="40" depth="0.16" color="#84aac2" opacity=".87"></a-box>
+    </a-entity>
+    <a-entity position="86 0 -146">
+      <a-box position="0 32 0" width="18" height="64" depth="18" material="color:#e2e7ec;metalness:.25;roughness:.49"></a-box>
+      <a-box position="0 32 9.08" width="13.6" height="54" depth="0.16" color="#7ca2bc" opacity=".9"></a-box>
+    </a-entity>
+    <a-entity position="108 0 -112">
+      <a-box position="0 26 0" width="20" height="52" depth="18" material="color:#d4dce4;metalness:.24;roughness:.52"></a-box>
+      <a-box position="0 26 9.08" width="15" height="42" depth="0.16" color="#85abc4" opacity=".87"></a-box>
+    </a-entity>
+    <a-entity position="118 0 -68">
+      <a-box position="0 18 0" width="18" height="36" depth="18" material="color:#cfd7df;metalness:.22;roughness:.56"></a-box>
+      <a-box position="0 18 9.08" width="13.2" height="28" depth="0.16" color="#89aec6" opacity=".85"></a-box>
+    </a-entity>
+    <a-entity position="112 0 -18">
+      <a-box position="0 24 0" width="16" height="48" depth="16" material="color:#d8dfe6;metalness:.24;roughness:.53"></a-box>
+      <a-box position="0 24 8.08" width="12" height="40" depth="0.16" color="#81a7c1" opacity=".88"></a-box>
+    </a-entity>
+    <a-entity position="96 0 24">
+      <a-box position="0 16 0" width="20" height="32" depth="18" material="color:#d0d8e0;metalness:.2;roughness:.6"></a-box>
+      <a-box position="0 16 9.08" width="14.8" height="24" depth="0.16" color="#89aec7" opacity=".84"></a-box>
+    </a-entity>
+    <a-entity position="52 0 34">
+      <a-box position="0 14 0" width="18" height="28" depth="16" material="color:#d4dae1;metalness:.18;roughness:.62"></a-box>
+      <a-box position="0 14 8.08" width="13.5" height="20" depth="0.16" color="#91b5cb" opacity=".83"></a-box>
+    </a-entity>
+    <a-entity position="-54 0 36">
+      <a-box position="0 13 0" width="18" height="26" depth="16" material="color:#d3d9e0;metalness:.18;roughness:.62"></a-box>
+      <a-box position="0 13 8.08" width="13.4" height="19" depth="0.16" color="#90b4ca" opacity=".83"></a-box>
+    </a-entity>
+
+    <a-text value="Residential Zone" position="-20 14 6" color="#1f1f1f" scale="7 7 7"></a-text><a-text value="City Core" position="-4 22 -10" color="#1f1f1f" scale="8 8 8"></a-text><a-text value="Shopping Street" position="18 20 -22" color="#1f1f1f" scale="6 6 6"></a-text><a-text value="Metro Station" position="-44 16 -39" color="#1f1f1f" scale="6 6 6"></a-text><a-text value="Hospital" position="30 31 -88" color="#1f1f1f" scale="8 8 8"></a-text>
+
+    <!-- Human-scale street system -->
+    <a-entity position="-10 0 -27.5">
+      <a-cylinder position="0 1.7 0" radius="0.06" height="3.4" color="#3c4650"></a-cylinder>
+      <a-box position="0 3.1 0" width="0.52" height="0.82" depth="0.12" color="#20262b"></a-box>
+      <a-circle position="0 3.28 0.07" radius="0.09" color="#ff4d4d"></a-circle>
+      <a-circle position="0 3.05 0.07" radius="0.09" color="#3a3f45"></a-circle>
+    </a-entity>
+    <a-entity position="10 0 -27.5">
+      <a-cylinder position="0 1.7 0" radius="0.06" height="3.4" color="#3c4650"></a-cylinder>
+      <a-box position="0 3.1 0" width="0.52" height="0.82" depth="0.12" color="#20262b"></a-box>
+      <a-circle position="0 3.28 0.07" radius="0.09" color="#54ff6a"></a-circle>
+      <a-circle position="0 3.05 0.07" radius="0.09" color="#3a3f45"></a-circle>
+    </a-entity>
+
+    <a-entity position="20 0 -21.5">
+      <a-box position="0 1.4 0" width="5.6" height="0.14" depth="1.8" color="#93a7b6" opacity="0.8"></a-box>
+      <a-box position="-2.2 0.8 0" width="0.12" height="1.6" depth="0.12" color="#8799a8"></a-box>
+      <a-box position="2.2 0.8 0" width="0.12" height="1.6" depth="0.12" color="#8799a8"></a-box>
+      <a-box position="0 0.75 -0.7" width="5.2" height="1.5" depth="0.12" color="#89a3b4" opacity="0.34"></a-box>
+      <a-box position="-1.2 0.45 0.2" width="1.8" height="0.16" depth="0.5" color="#7a8894"></a-box>
+      <a-box position="-1.9 0.23 0.2" width="0.12" height="0.45" depth="0.12" color="#53606b"></a-box>
+      <a-box position="-0.5 0.23 0.2" width="0.12" height="0.45" depth="0.12" color="#53606b"></a-box>
+    </a-entity>
+    <a-entity position="24.5 0 -21.8">
+      <a-cylinder position="0 1.45 0" radius="0.06" height="2.9" color="#46515d"></a-cylinder>
+      <a-box position="0 2.55 0" width="1.1" height="0.9" depth="0.08" color="#205c86"></a-box>
+      <a-text value="BUS" position="-0.38 2.45 0.08" color="#ffffff" scale="1.6 1.6 1.6"></a-text>
+    </a-entity>
+
+    <a-entity position="-2 0 -23.5">
+      <a-cylinder position="0 0.45 0" radius="0.16" height="0.9" color="#4a565e"></a-cylinder>
+      <a-box position="0 0.9 0" width="0.42" height="0.32" depth="0.42" color="#7b8b96"></a-box>
+    </a-entity>
+    <a-entity position="6 0 -23.5">
+      <a-cylinder position="0 0.45 0" radius="0.16" height="0.9" color="#4a565e"></a-cylinder>
+      <a-box position="0 0.9 0" width="0.42" height="0.32" depth="0.42" color="#7b8b96"></a-box>
+    </a-entity>
+
+    <a-entity position="-6 0 -21">
+      <a-torus position="0 0.45 0" radius="0.34" radius-tubular="0.04" rotation="0 0 90" color="#98aaba"></a-torus>
+      <a-torus position="0.8 0.45 0" radius="0.34" radius-tubular="0.04" rotation="0 0 90" color="#98aaba"></a-torus>
+      <a-torus position="1.6 0.45 0" radius="0.34" radius-tubular="0.04" rotation="0 0 90" color="#98aaba"></a-torus>
+      <a-box position="0.8 0.08 0" width="2" height="0.08" depth="0.16" color="#6d7c88"></a-box>
+      <a-entity position="0 0.48 0"><a-torus radius="0.28" radius-tubular="0.03" rotation="0 0 90" color="#4fd1d9"></a-torus><a-box position="0.28 0 0" width="0.55" height="0.04" depth="0.04" rotation="0 0 16" color="#4fd1d9"></a-box></a-entity>
+    </a-entity>
+
+    <!-- Street lights -->
+    <a-entity position="-8 0 -8">
+      <a-cylinder position="0 2.2 0" radius="0.08" height="4.4" color="#434c56"></a-cylinder>
+      <a-box position="0.22 4.15 0" width="0.72" height="0.08" depth="0.08" color="#434c56"></a-box>
+      <a-sphere position="0.5 4.15 0" radius="0.22" color="#ffe2a2"></a-sphere>
+      <a-entity light="type: point; intensity: 0.5; distance: 15; color: #ffd697" position="0.5 4.15 0"></a-entity>
+    </a-entity>
+    <a-entity position="8 0 -20">
+      <a-cylinder position="0 2.2 0" radius="0.08" height="4.4" color="#434c56"></a-cylinder>
+      <a-box position="0.22 4.15 0" width="0.72" height="0.08" depth="0.08" color="#434c56"></a-box>
+      <a-sphere position="0.5 4.15 0" radius="0.22" color="#ffe2a2"></a-sphere>
+      <a-entity light="type: point; intensity: 0.5; distance: 15; color: #ffd697" position="0.5 4.15 0"></a-entity>
+    </a-entity>
+    <a-entity position="8 0 -44">
+      <a-cylinder position="0 2.2 0" radius="0.08" height="4.4" color="#434c56"></a-cylinder>
+      <a-box position="0.22 4.15 0" width="0.72" height="0.08" depth="0.08" color="#434c56"></a-box>
+      <a-sphere position="0.5 4.15 0" radius="0.22" color="#ffe2a2"></a-sphere>
+      <a-entity light="type: point; intensity: 0.5; distance: 15; color: #ffd697" position="0.5 4.15 0"></a-entity>
+    </a-entity>
+    <a-entity position="-8 0 -68">
+      <a-cylinder position="0 2.2 0" radius="0.08" height="4.4" color="#434c56"></a-cylinder>
+      <a-box position="0.22 4.15 0" width="0.72" height="0.08" depth="0.08" color="#434c56"></a-box>
+      <a-sphere position="0.5 4.15 0" radius="0.22" color="#ffe2a2"></a-sphere>
+      <a-entity light="type: point; intensity: 0.5; distance: 15; color: #ffd697" position="0.5 4.15 0"></a-entity>
+    </a-entity>
+
+    <a-entity position="-52 0 -100"><a-cylinder position="0 1.6 0" radius="0.35" height="3.2" color="#6d5137"></a-cylinder><a-sphere position="-0.8 4.1 0.2" radius="2.1" color="#54965c"></a-sphere><a-sphere position="0.9 4.5 -0.3" radius="2.4" color="#5da565"></a-sphere><a-sphere position="0 5.4 0.4" radius="2.1" color="#4c8953"></a-sphere></a-entity>
+    <a-entity position="-38 0 -108"><a-cylinder position="0 1.6 0" radius="0.35" height="3.2" color="#6d5137"></a-cylinder><a-sphere position="-0.8 4.1 0.2" radius="2.1" color="#54965c"></a-sphere><a-sphere position="0.9 4.5 -0.3" radius="2.4" color="#5da565"></a-sphere><a-sphere position="0 5.4 0.4" radius="2.1" color="#4c8953"></a-sphere></a-entity>
+    <a-entity position="-28 0 -90"><a-cylinder position="0 1.6 0" radius="0.35" height="3.2" color="#6d5137"></a-cylinder><a-sphere position="-0.8 4.1 0.2" radius="2.1" color="#54965c"></a-sphere><a-sphere position="0.9 4.5 -0.3" radius="2.4" color="#5da565"></a-sphere><a-sphere position="0 5.4 0.4" radius="2.1" color="#4c8953"></a-sphere></a-entity>
+
+    <a-box position="0 0.38 -14" width="8" height="0.76" depth="2" color="#8f8f8f"></a-box><a-box position="8 0.16 -18" width="5" height="0.32" depth="7" rotation="0 0 10" color="#7d7d7d"></a-box><a-box position="10 0.06 -26" width="2.6" height="0.08" depth="2.6" color="#8d8d8d"></a-box><a-box position="24 0.65 -50" width="2.8" height="1.3" depth="2.8" color="#757575"></a-box><a-box position="-8 0.05 -46" width="4.4" height="0.08" depth="4.4" color="#5d5d5d"></a-box>
+    <a-box position="4 0.95 -6" width="2.8" height="1.9" depth="2.2" color="#f0a84e"></a-box>
+    <a-box position="14 1.2 -36" width="3.4" height="2.4" depth="2.4" color="#f39b61"></a-box>
+    <a-box position="-30 1.05 -70" width="3.2" height="2.1" depth="2.8" color="#8d9aa7"></a-box>
+
+    <a-entity id="route_clinic" visible="false"><a-box position="0 0.08 -10" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="0 0.08 -20" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="0 0.08 -32" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="8 0.08 -36" width="12" height="0.03" depth="1.5" color="#67c8ff"></a-box><a-box position="20 0.08 -46" width="1.5" height="0.03" depth="18" color="#67c8ff"></a-box><a-box position="30 0.08 -56" width="20" height="0.03" depth="1.5" color="#67c8ff"></a-box><a-box position="38 0.08 -72" width="1.5" height="0.03" depth="24" color="#67c8ff"></a-box><a-triangle position="0 0.18 -14" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="0 0.18 -28" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="10 0.18 -36" rotation="-90 90 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="20 0.18 -46" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="32 0.18 -56" rotation="-90 90 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="38 0.18 -82" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle></a-entity>
+    <a-entity id="route_metro" visible="false"><a-box position="0 0.08 -10" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="0 0.08 -20" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="-8 0.08 -36" width="12" height="0.03" depth="1.5" color="#67c8ff"></a-box><a-box position="-22 0.08 -36" width="16" height="0.03" depth="1.5" color="#67c8ff"></a-box><a-box position="-30 0.08 -40" width="1.5" height="0.03" depth="8" color="#67c8ff"></a-box><a-triangle position="0 0.18 -14" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="0 0.18 -28" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-10 0.18 -36" rotation="-90 -90 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-24 0.18 -36" rotation="-90 -90 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-30 0.18 -40" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle></a-entity>
+    <a-entity id="route_park" visible="false"><a-box position="0 0.08 -10" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="0 0.08 -20" width="1.5" height="0.03" depth="4" color="#67c8ff"></a-box><a-box position="-10 0.08 -36" width="16" height="0.03" depth="1.5" color="#67c8ff"></a-box><a-box position="-22 0.08 -48" width="1.5" height="0.03" depth="22" color="#67c8ff"></a-box><a-box position="-30 0.08 -70" width="16" height="0.03" depth="1.5" color="#67c8ff"></a-box><a-box position="-40 0.08 -86" width="1.5" height="0.03" depth="24" color="#67c8ff"></a-box><a-triangle position="0 0.18 -14" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="0 0.18 -28" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-12 0.18 -36" rotation="-90 -90 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-22 0.18 -50" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-32 0.18 -70" rotation="-90 -90 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle><a-triangle position="-40 0.18 -90" rotation="-90 0 0" vertex-a="0 1.1 0" vertex-b="-0.9 -1 0" vertex-c="0.9 -1 0" color="#45baff"></a-triangle></a-entity>
+    <a-entity id="marker_stairs" position="0 3.4 -14" animation="property: position; dir: alternate; dur: 900; loop: true; to: 0 2.6 -14"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_square" position="0 3.4 -28" animation="property: position; dir: alternate; dur: 900; loop: true; to: 0 2.6 -28"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_metroGate" position="-23 3.4 -32" animation="property: position; dir: alternate; dur: 900; loop: true; to: -23 2.6 -32"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_tactile" position="10 3.4 -26" animation="property: position; dir: alternate; dur: 900; loop: true; to: 10 2.6 -26"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_hospitalEntry" position="24 3.4 -50" animation="property: position; dir: alternate; dur: 900; loop: true; to: 24 2.6 -50"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_parkPath" position="-26 3.4 -48" animation="property: position; dir: alternate; dur: 900; loop: true; to: -26 2.6 -48"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_delivery" position="4 3.4 -6" animation="property: position; dir: alternate; dur: 900; loop: true; to: 4 2.6 -6"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_construction" position="14 3.4 -36" animation="property: position; dir: alternate; dur: 900; loop: true; to: 14 2.6 -36"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_detour" position="-30 3.4 -70" animation="property: position; dir: alternate; dur: 900; loop: true; to: -30 2.6 -70"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_curbCut" position="12 3.4 -18" animation="property: position; dir: alternate; dur: 900; loop: true; to: 12 2.6 -18"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_busStop" position="18 3.4 -58" animation="property: position; dir: alternate; dur: 900; loop: true; to: 18 2.6 -58"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+    <a-entity id="marker_audibleSignal" position="-10 3.4 -50" animation="property: position; dir: alternate; dur: 900; loop: true; to: -10 2.6 -50"><a-cone radius-bottom="0.6" radius-top="0" height="1.3" color="#d62828" rotation="180 0 0"></a-cone><a-cylinder position="0 0.95 0" radius="0.12" height="1" color="#d62828"></a-cylinder></a-entity>
+
+    <a-entity id="goalMarker" position="38 7 -92" animation="property: rotation; to: 0 360 0; loop: true; dur: 5000" animation__float="property: position; dir: alternate; dur: 1200; loop: true; to: 38 8 -92"><a-cylinder radius="0.12" height="6.6" color="#6f5a24" position="0 -2.4 0"></a-cylinder><a-torus radius="1.45" radius-tubular="0.08" color="#ffd54a" position="0 0.3 0" rotation="90 0 0"></a-torus><a-circle radius="1.2" color="#ffe485" opacity="0.28" position="0 0.3 -0.06"></a-circle><a-text value="★" align="center" color="#ffd83d" side="double" position="0 -0.1 0.05" scale="9 9 9"></a-text><a-entity light="type: point; intensity: 0.65; distance: 18; color: #ffd95f" position="0 0.5 0"></a-entity></a-entity>
+
+    <!-- Cars kept on roads only -->
+    <a-entity position="-4 0.7 -6"><a-box width="2.4" height="0.8" depth="4.8" color="#cc4e4b" material="metalness:.32;roughness:.4"></a-box><a-box position="0 0.55 -0.2" width="1.8" height="0.75" depth="2.1" color="#8fb3c8"></a-box><a-cylinder position="-1 -0.42 1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1 -0.42 1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1 -0.42 -1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1 -0.42 -1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+    <a-entity position="22 0.7 -34" rotation="0 90 0"><a-box width="2.4" height="0.8" depth="4.8" color="#f0b54d" material="metalness:.32;roughness:.4"></a-box><a-box position="0 0.55 -0.2" width="1.8" height="0.75" depth="2.1" color="#9ac1d9"></a-box><a-cylinder position="-1 -0.42 1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1 -0.42 1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1 -0.42 -1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1 -0.42 -1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+    <a-entity position="-34 0.7 -84" rotation="0 90 0"><a-box width="2.4" height="0.8" depth="4.8" color="#4ea56f" material="metalness:.32;roughness:.4"></a-box><a-box position="0 0.55 -0.2" width="1.8" height="0.75" depth="2.1" color="#9ac1d9"></a-box><a-cylinder position="-1 -0.42 1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1 -0.42 1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1 -0.42 -1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1 -0.42 -1.55" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+    <a-entity position="-6 0.7 10" animation="property: position; to: -6 0.7 -110; dur: 14000; loop: true; easing: linear"><a-box width="2.5" height="0.8" depth="5" color="#5a8fd2" material="metalness:.3;roughness:.42"></a-box><a-box position="0 0.56 -0.2" width="1.9" height="0.76" depth="2.1" color="#94b7cb"></a-box><a-cylinder position="-1.05 -0.42 1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.05 -0.42 1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1.05 -0.42 -1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.05 -0.42 -1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+    <a-entity position="12 0.7 -104" animation="property: position; to: 12 0.7 10; dur: 15500; loop: true; easing: linear"><a-box width="2.5" height="0.8" depth="5" color="#d98954" material="metalness:.3;roughness:.42"></a-box><a-box position="0 0.56 -0.2" width="1.9" height="0.76" depth="2.1" color="#94b7cb"></a-box><a-cylinder position="-1.05 -0.42 1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.05 -0.42 1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1.05 -0.42 -1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.05 -0.42 -1.6" radius="0.38" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+    <a-entity position="-58 0.75 -36" rotation="0 90 0" animation="property: position; to: 56 0.75 -36; dur: 18000; loop: true; easing: linear"><a-box width="2.7" height="0.9" depth="5.2" color="#4fba8f" material="metalness:.3;roughness:.42"></a-box><a-box position="0 0.6 -0.2" width="2" height="0.82" depth="2.2" color="#94b7cb"></a-box><a-cylinder position="-1.1 -0.46 1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.1 -0.46 1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1.1 -0.46 -1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.1 -0.46 -1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+    <a-entity position="-54 0.75 -84" rotation="0 90 0" animation="property: position; to: 18 0.75 -84; dur: 15000; loop: true; easing: linear"><a-box width="2.7" height="0.9" depth="5.2" color="#7a84d1" material="metalness:.3;roughness:.42"></a-box><a-box position="0 0.6 -0.2" width="2" height="0.82" depth="2.2" color="#94b7cb"></a-box><a-cylinder position="-1.1 -0.46 1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.1 -0.46 1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="-1.1 -0.46 -1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder><a-cylinder position="1.1 -0.46 -1.75" radius="0.4" height="0.35" rotation="90 0 0" color="#1d1d1d"></a-cylinder></a-entity>
+
+    <!-- Pedestrians -->
+    <a-entity position="-12 0 -8"><a-cylinder position="0 1.05 0" radius="0.18" height="1.25" color="#2f5c8f"></a-cylinder><a-sphere position="0 1.92 0" radius="0.24" color="#f2c7a5"></a-sphere><a-box position="-0.28 1.12 0" width="0.12" height="0.8" depth="0.12" rotation="0 0 18" color="#2f5c8f"></a-box><a-box position="0.28 1.12 0" width="0.12" height="0.8" depth="0.12" rotation="0 0 -18" color="#2f5c8f"></a-box><a-box position="-0.12 0.35 0" width="0.12" height="0.7" depth="0.12" rotation="0 0 8" color="#1f2e46"></a-box><a-box position="0.12 0.35 0" width="0.12" height="0.7" depth="0.12" rotation="0 0 -8" color="#1f2e46"></a-box></a-entity>
+    <a-entity position="12 0 -24"><a-cylinder position="0 1.05 0" radius="0.18" height="1.25" color="#8f2f4c"></a-cylinder><a-sphere position="0 1.92 0" radius="0.24" color="#f2c7a5"></a-sphere><a-box position="-0.28 1.12 0" width="0.12" height="0.8" depth="0.12" rotation="0 0 18" color="#8f2f4c"></a-box><a-box position="0.28 1.12 0" width="0.12" height="0.8" depth="0.12" rotation="0 0 -18" color="#8f2f4c"></a-box><a-box position="-0.12 0.35 0" width="0.12" height="0.7" depth="0.12" rotation="0 0 8" color="#33243a"></a-box><a-box position="0.12 0.35 0" width="0.12" height="0.7" depth="0.12" rotation="0 0 -8" color="#33243a"></a-box></a-entity>
+    <a-entity position="-12 0 -27" animation="property: position; to: 12 0 -27; dur: 14000; loop: true; easing: linear"><a-cylinder position="0 1.05 0" radius="0.18" height="1.25" color="#7d5a31"></a-cylinder><a-sphere position="0 1.92 0" radius="0.24" color="#f2c7a5"></a-sphere><a-box position="-0.28 1.12 0" width="0.12" height="0.8" depth="0.12" rotation="0 0 18" color="#7d5a31"></a-box><a-box position="0.28 1.12 0" width="0.12" height="0.8" depth="0.12" rotation="0 0 -18" color="#7d5a31"></a-box><a-box position="-0.12 0.35 0" width="0.12" height="0.7" depth="0.12" rotation="0 0 8" color="#31271d"></a-box><a-box position="0.12 0.35 0" width="0.12" height="0.7" depth="0.12" rotation="0 0 -8" color="#31271d"></a-box></a-entity>
+
+    <a-entity id="playerCamera" camera position="0 1.6 22" wasd-controls="acceleration: 45" look-controls></a-entity>
+  </a-scene>
+
+  <script>
+    const personas=[{id:"baseline",name:"Baseline User",desc:"No major mobility or sensory limitation.",tags:["Reference","Average route experience"]},{id:"wheelchair",name:"Wheelchair User",desc:"Requires step-free access and enough physical space.",tags:["No stairs","Ramp needed","Gate width"]},{id:"visual",name:"Visually Impaired User",desc:"Relies on tactile paving, sound cues, and clear spatial structure.",tags:["Tactile paving","Audio cues","Route complexity"]},{id:"hearing",name:"Hearing Impaired User",desc:"Needs stronger visual guidance.",tags:["Visual guidance","Crowding","Station information"]},{id:"mobility",name:"Mobility-Limited User",desc:"Sensitive to stairs, slope, and rough pavement.",tags:["Walking effort","Distance","Surface condition"]}];
+    const tasks=[{id:"clinic",name:"Visit the Hospital",desc:"Travel from the Residential Zone to the Hospital.",goalPosition:{x:38,z:-92},goalLabel:"Hospital"},{id:"metro",name:"Go to the Metro",desc:"Travel from the Residential Zone to the Metro Station.",goalPosition:{x:-38,z:-40},goalLabel:"Metro Station"},{id:"park",name:"Go to the Park",desc:"Travel from the Residential Zone to the Park for a break.",goalPosition:{x:-40,z:-100},goalLabel:"Park"}];
+    let selectedPersona=null,selectedTask=null,currentEventLocked=false,simulationStarted=false,resultShown=false,state={time:0,stress:0,score:10,eventsTriggered:0,barriers:[]};
+    const introPanel=document.getElementById("introPanel"),personaPanel=document.getElementById("personaPanel"),taskPanel=document.getElementById("taskPanel"),eventPanel=document.getElementById("eventPanel"),resultPanel=document.getElementById("resultPanel"),hud=document.getElementById("hud"),tipsBox=document.getElementById("tipsBox"),crosshair=document.getElementById("crosshair"),personaCardsContainer=document.getElementById("personaCards"),taskCardsContainer=document.getElementById("taskCards"),playerCamera=document.getElementById("playerCamera"),goalMarker=document.getElementById("goalMarker");
+    const routeGroups={clinic:document.getElementById("route_clinic"),metro:document.getElementById("route_metro"),park:document.getElementById("route_park")};
+    const markerMap={stairs:document.getElementById("marker_stairs"),square:document.getElementById("marker_square"),metroGate:document.getElementById("marker_metroGate"),tactile:document.getElementById("marker_tactile"),hospitalEntry:document.getElementById("marker_hospitalEntry"),parkPath:document.getElementById("marker_parkPath"),delivery:document.getElementById("marker_delivery"),construction:document.getElementById("marker_construction"),detour:document.getElementById("marker_detour"),curbCut:document.getElementById("marker_curbCut"),busStop:document.getElementById("marker_busStop"),audibleSignal:document.getElementById("marker_audibleSignal")};
+    const routeEvents=[
+{id:"delivery",x:4,z:-6,tasks:["clinic","metro","park"],barrierType:"sidewalk_block",title:"Delivery Van Blocks Sidewalk",getContent(p){if(p==="wheelchair")return{title:"The Sidewalk Narrows Suddenly",text:"A delivery van partly occupies the sidewalk, reducing usable width.",choices:[{label:"Detour onto the road edge",time:7,stress:5,score:-3,note:"temporary obstruction removes safe passage and pushes you toward traffic"},{label:"Wait for the loading to finish",time:8,stress:3,score:-2,note:"commercial servicing delays travel on an essential route"}]};if(p==="visual")return{title:"The Usual Edge of the Route Is Gone",text:"A vehicle and delivery crates spill into the path, replacing a predictable boundary with obstacles.",choices:[{label:"Probe forward very slowly",time:7,stress:4,score:-2,note:"temporary obstacles disrupt edge-following and safe navigation"},{label:"Ask the workers to describe a clear path",time:6,stress:3,score:-1,note:"wayfinding depends on ad hoc verbal guidance"}]};return{title:"Loading Conflict",text:"A busy commercial frontage spills onto the walkway.",choices:[{label:"Squeeze past carefully",time:2,stress:1,score:0,note:"loading activity creates friction"},{label:"Step around and continue",time:3,stress:0,score:0,note:"short detour around obstruction"}]};}},
+{id:"stairs",x:0,z:-14,tasks:["clinic","metro","park"],barrierType:"stairs",title:"Stair Barrier in the City Core",getContent(p){if(p==="wheelchair")return{title:"Blocked by Stairs",text:"The staircase interrupts your route and forces a re-think of how to proceed.",choices:[{label:"Turn back and search for the ramp",time:8,stress:4,score:-2,note:"stairs interrupt independent movement and add a long detour"},{label:"Stop and ask for assistance",time:10,stress:5,score:-3,note:"access depends on outside help and waiting"}]};if(p==="mobility")return{title:"These Stairs Feel Harder Than They Look",text:"Even a small vertical change can reshape the whole journey.",choices:[{label:"Use the stairs slowly",time:3,stress:2,score:-1,note:"stairs increase physical burden"},{label:"Take the longer ramp route",time:4,stress:1,score:0,note:"ramp is slower but safer"}]};return{title:"Shortcut or Detour?",text:"The stairs offer the shortest path. A ramp is available nearby, but it adds distance.",choices:[{label:"Take the stairs",time:2,stress:1,score:0,note:"minor inconvenience for baseline movement"},{label:"Use the ramp",time:3,stress:0,score:0,note:"slightly longer but easier route"}]};}},
+{id:"curbCut",x:12,z:-18,tasks:["clinic","metro","park"],barrierType:"missing_curb_cut",title:"Missing Curb Cut",getContent(p){if(p==="wheelchair")return{title:"No Smooth Way Down to Street Level",text:"The curb edge is higher than expected, and the nearest dropped curb is not where the route naturally leads.",choices:[{label:"Backtrack to find the dropped curb",time:7,stress:4,score:-2,note:"missing curb cuts force a detour and extra alignment work"},{label:"Ask someone to help you over the curb",time:8,stress:5,score:-3,note:"basic street access depends on assistance"}]};return{title:"Raised Curb Edge",text:"The crossing point is less direct than it first appears.",choices:[{label:"Look for a smoother entry point",time:2,stress:1,score:0,note:"curb design adds friction"},{label:"Continue carefully",time:3,stress:0,score:0,note:"small routing adjustment"}]};}},
+{id:"square",x:0,z:-28,tasks:["clinic","metro","park"],barrierType:"crowd_noise",title:"Community Square Crowd",getContent(p){if(p==="hearing")return{title:"Too Much Noise, Too Little Clarity",text:"The square is crowded and loud, making orientation slower.",choices:[{label:"Slow down and follow visual signs",time:3,stress:2,score:-1,note:"crowding reduces visual clarity"},{label:"Wait for the space to clear a little",time:5,stress:1,score:-1,note:"urban crowding creates delay"}]};if(p==="visual")return{title:"Movement Everywhere",text:"It becomes harder to construct a stable sense of where the route continues.",choices:[{label:"Move slowly and map the direction carefully",time:8,stress:4,score:-2,note:"complex movement and crowd flow increase uncertainty"},{label:"Ask someone nearby for direction",time:7,stress:4,score:-2,note:"navigation depends on informal support in a noisy crowd"}]};if(p==="wheelchair")return{title:"Crowd Pressure on a Narrow Path",text:"People cut across the route and reduce the space you need to turn and pass safely.",choices:[{label:"Wait for a wider opening",time:6,stress:3,score:-1,note:"crowd density limits usable maneuvering space"},{label:"Ask people to make space",time:7,stress:4,score:-2,note:"forward movement depends on other people yielding"}]};return{title:"Busy Community Square",text:"The route remains passable, but no longer calm or efficient.",choices:[{label:"Continue through the crowd",time:2,stress:1,score:0,note:"crowd creates mild friction"},{label:"Move around the edge",time:3,stress:0,score:0,note:"slower but less stressful"}]};}},
+{id:"metroGate",x:-23,z:-32,tasks:["metro"],barrierType:"narrow_gate",title:"Narrow Gate at Metro Entry",getContent(p){if(p==="wheelchair")return{title:"The Standard Gate Does Not Work for You",text:"The nearest gate is too narrow.",choices:[{label:"Search for the accessible gate",time:8,stress:4,score:-2,note:"standard gate dimensions exclude some users and add delay"},{label:"Ask staff for help at the gate",time:9,stress:5,score:-3,note:"station access depends on extra assistance and waiting"}]};if(p==="visual")return{title:"Gate Layout Is Hard to Read",text:"Multiple lanes and moving bodies make it difficult to identify the safest usable entry.",choices:[{label:"Trace the edge and find a clearer lane",time:7,stress:4,score:-2,note:"complex gate layouts reduce confidence in independent navigation"},{label:"Ask staff to guide you in",time:6,stress:3,score:-1,note:"entry depends on verbal assistance"}]};return{title:"Compressed Metro Entrance",text:"The gate area is tight and crowded.",choices:[{label:"Move through directly",time:2,stress:1,score:0,note:"entrance stays usable for baseline user"},{label:"Pause and enter more carefully",time:3,stress:0,score:0,note:"slightly slower but calmer"}]};}},
+{id:"construction",x:14,z:-36,tasks:["clinic","metro"],barrierType:"construction",title:"Construction Pinch Point",getContent(p){if(p==="visual")return{title:"Temporary Barriers Distort the Route",text:"Construction fencing changes the edge of the path and disrupts legibility.",choices:[{label:"Move slowly along the barrier",time:8,stress:4,score:-2,note:"temporary layout reduces route clarity and slows safe movement"},{label:"Ask for confirmation of direction",time:7,stress:4,score:-2,note:"construction disrupts independent navigation"}]};if(p==="wheelchair")return{title:"Work Zone Leaves Too Little Turning Space",text:"Temporary boards and cones squeeze the route just where you need room to align and turn.",choices:[{label:"Reverse and find a wider approach",time:7,stress:4,score:-2,note:"construction leaves inadequate maneuvering width"},{label:"Wait for someone to move the barrier slightly",time:8,stress:4,score:-2,note:"access relies on temporary staff intervention"}]};return{title:"Narrowed Walkway",text:"A temporary construction zone compresses the available walking space.",choices:[{label:"Continue through carefully",time:2,stress:1,score:0,note:"construction narrows the path"},{label:"Use the opposite side and rejoin later",time:3,stress:0,score:0,note:"short reroute around works"}]};}},
+{id:"tactile",x:10,z:-26,tasks:["clinic"],barrierType:"tactile_guidance",title:"Broken Guidance Surface",getContent(p){if(p==="visual")return{title:"The Tactile Path Breaks Here",text:"The tactile line becomes inconsistent and unreliable.",choices:[{label:"Proceed very slowly",time:9,stress:5,score:-3,note:"missing tactile paving causes serious navigation difficulty and delay"},{label:"Pause and ask for help",time:8,stress:4,score:-2,note:"guidance system fails to support independent movement"}]};return{title:"Inconsistent Paving",text:"The paving is uneven and less legible.",choices:[{label:"Continue carefully",time:2,stress:1,score:0,note:"surface design reduces comfort"},{label:"Slow down and inspect the route",time:3,stress:0,score:0,note:"small delay for safer movement"}]};}},
+{id:"audibleSignal",x:-10,z:-50,tasks:["park","metro"],barrierType:"unclear_signal",title:"Unclear Crossing Cue",getContent(p){if(p==="visual")return{title:"The Crossing Cue Is Hard to Trust",text:"The crossing relies on a weak audible signal, and surrounding traffic noise makes it difficult to confirm when it is safe to move.",choices:[{label:"Wait through another cycle to be sure",time:8,stress:5,score:-3,note:"crossing depends on unreliable audio information"},{label:"Ask another pedestrian to confirm the crossing phase",time:7,stress:4,score:-2,note:"safe crossing depends on other people interpreting the signal"}]};return{title:"Unclear Signal Timing",text:"The crossing phase is less intuitive than expected.",choices:[{label:"Wait and watch the signal",time:3,stress:1,score:0,note:"signal timing adds delay"},{label:"Follow the phase carefully",time:2,stress:1,score:0,note:"requires added attention"}]};}},
+{id:"hospitalEntry",x:24,z:-50,tasks:["clinic"],barrierType:"entry_condition",title:"Hospital Entrance Barrier",getContent(p){if(p==="wheelchair")return{title:"The Last Meters Are the Hardest",text:"The final approach includes a raised curb and awkward alignment.",choices:[{label:"Look for the ramped side entry",time:8,stress:4,score:-2,note:"last-meter accessibility failure extends the trip"},{label:"Request assistance at the entrance",time:9,stress:5,score:-3,note:"arrival depends on external intervention"}]};if(p==="visual")return{title:"The Entrance Has Weak Wayfinding",text:"The entry sequence blends curb, doors, and frontage together, making the destination harder to read.",choices:[{label:"Follow the wall slowly to confirm the doorway",time:7,stress:4,score:-2,note:"entrance design lacks clear tactile or spatial cues"},{label:"Ask someone at the entrance to orient you",time:6,stress:3,score:-1,note:"arrival depends on person-to-person guidance"}]};return{title:"The Final Stretch",text:"The entry condition is awkward, but manageable.",choices:[{label:"Enter directly",time:2,stress:1,score:0,note:"minor friction near destination"},{label:"Take a calmer side approach",time:3,stress:0,score:0,note:"slower but easier finish"}]};}},
+{id:"busStop",x:18,z:-58,tasks:["clinic"],barrierType:"bus_stop_clutter",title:"Bus Stop Spillover",getContent(p){if(p==="wheelchair")return{title:"Waiting Passengers Fill the Route",text:"The bus stop shelter and queue reduce the clear width of the sidewalk just before the clinic corridor.",choices:[{label:"Wait until the queue shifts",time:6,stress:4,score:-2,note:"street furniture and queuing reduce usable path width"},{label:"Request a path through the line",time:7,stress:4,score:-2,note:"progress depends on other people making room"}]};if(p==="visual")return{title:"Street Furniture and Queues Break the Path",text:"Poles, benches, and a shifting line of waiting passengers make the route edge harder to track.",choices:[{label:"Move slowly and re-establish the path",time:7,stress:4,score:-2,note:"street clutter interrupts continuous wayfinding"},{label:"Ask a passenger to guide you past the stop",time:6,stress:3,score:-1,note:"navigation depends on informal assistance"}]};return{title:"Crowded Bus Stop",text:"A queue narrows the sidewalk near the frontage.",choices:[{label:"Wait a moment",time:2,stress:1,score:0,note:"queue adds short delay"},{label:"Slip around the edge",time:3,stress:0,score:0,note:"slower but manageable"}]};}},
+{id:"parkPath",x:-26,z:-48,tasks:["park"],barrierType:"path_surface",title:"Uneven Path Toward the Park",getContent(p){if(p==="mobility")return{title:"The Park Is Close, but the Path Is Rough",text:"A recreational destination should feel restful, not risky.",choices:[{label:"Walk slowly and carefully",time:4,stress:2,score:-1,note:"surface condition reduces comfort and safety"},{label:"Take a longer smoother edge route",time:5,stress:1,score:0,note:"safer route requires detour"}]};if(p==="wheelchair")return{title:"Rough Surface Ahead",text:"The surface becomes less stable and requires extra effort to keep a comfortable line toward the park.",choices:[{label:"Continue cautiously",time:7,stress:4,score:-2,note:"rough paving makes independent movement slower and more stressful"},{label:"Search for a flatter approach",time:8,stress:3,score:-2,note:"public open space lacks a consistently accessible path"}]};if(p==="visual")return{title:"The Park Edge Loses Definition",text:"The route transitions from a clear sidewalk to a softer, less readable path edge.",choices:[{label:"Slow down and test each section",time:7,stress:4,score:-2,note:"surface changes reduce tactile readability"},{label:"Follow the outer boundary carefully",time:6,stress:3,score:-1,note:"navigation becomes slower at the park threshold"}]};return{title:"A Less Comfortable Park Entry",text:"The destination is pleasant, but the approach could be better.",choices:[{label:"Continue",time:2,stress:1,score:0,note:"minor discomfort at approach"},{label:"Take a gentler route around",time:3,stress:0,score:0,note:"slightly longer but smoother"}]};}},
+{id:"detour",x:-30,z:-70,tasks:["park"],barrierType:"detour",title:"Closed Corner Path",getContent(p){if(p==="mobility")return{title:"Unexpected Detour",text:"The most direct corner path is blocked, adding extra distance late in the trip.",choices:[{label:"Take the longer open edge path",time:4,stress:2,score:-1,note:"closure increases distance and fatigue"},{label:"Pause and recover before continuing",time:5,stress:1,score:-1,note:"detour amplifies accumulated effort"}]};if(p==="visual")return{title:"The Familiar Route Ends Abruptly",text:"A closure interrupts the expected line of travel and makes the next safe direction harder to confirm.",choices:[{label:"Stop and scan for a new edge to follow",time:7,stress:4,score:-2,note:"closure breaks route continuity and confidence"},{label:"Ask someone to describe the detour",time:6,stress:3,score:-1,note:"detour information is not independently accessible"}]};return{title:"Path Closure Ahead",text:"A temporary closure redirects you around the edge of the park.",choices:[{label:"Follow the detour",time:3,stress:1,score:0,note:"detour adds minor delay"},{label:"Scan for another open approach",time:4,stress:1,score:0,note:"temporary closure disrupts flow"}]};}}
+    ];
+    function renderPersonaCards(){personaCardsContainer.innerHTML="";personas.forEach(p=>{const d=document.createElement("div");d.className="card";d.innerHTML=`<h3>${p.name}</h3><p class="small">${p.desc}</p><div>${p.tags.map(t=>`<span class="badge">${t}</span>`).join("")}</div>`;d.onclick=()=>{selectedPersona=p;[...personaCardsContainer.children].forEach(c=>c.classList.remove("selected"));d.classList.add("selected")};personaCardsContainer.appendChild(d)})}
+    function renderTaskCards(){taskCardsContainer.innerHTML="";tasks.forEach(t=>{const d=document.createElement("div");d.className="card";d.innerHTML=`<h3>${t.name}</h3><p class="small">${t.desc}</p><div><span class="badge">${t.goalLabel}</span></div>`;d.onclick=()=>{selectedTask=t;[...taskCardsContainer.children].forEach(c=>c.classList.remove("selected"));d.classList.add("selected")};taskCardsContainer.appendChild(d)})}
+    function updateRouteVisibility(taskId=null){Object.entries(routeGroups).forEach(([id,e])=>e.setAttribute("visible",String(id===taskId)))}
+    renderPersonaCards();renderTaskCards();updateRouteVisibility();
+    function goToPersonaSelection(){introPanel.style.display="none";personaPanel.style.display="block"}
+    function backToIntro(){personaPanel.style.display="none";introPanel.style.display="block"}
+    function backToPersona(){taskPanel.style.display="none";personaPanel.style.display="block"}
+    function confirmPersona(){if(!selectedPersona)return alert("Please choose one persona first.");personaPanel.style.display="none";taskPanel.style.display="block"}
+    function resetState(){state={time:0,stress:0,score:10,eventsTriggered:0,barriers:[]};resultShown=false;currentEventLocked=false;simulationStarted=false;routeEvents.forEach(ev=>ev.triggered=false);Object.values(markerMap).forEach(m=>m.setAttribute("visible","true"));eventPanel.style.display="none";resultPanel.style.display="none";updateRouteVisibility()}
+    function startSimulation(){if(!selectedTask)return alert("Please choose one task first.");resetState();taskPanel.style.display="none";hud.style.display="block";tipsBox.style.display="block";crosshair.style.display="block";playerCamera.setAttribute("position",{x:0,y:1.6,z:22});playerCamera.setAttribute("rotation",{x:0,y:0,z:0});goalMarker.setAttribute("position",{x:selectedTask.goalPosition.x,y:7,z:selectedTask.goalPosition.z});goalMarker.setAttribute("animation__float",{property:"position",dir:"alternate",dur:1200,loop:true,to:`${selectedTask.goalPosition.x} 8 ${selectedTask.goalPosition.z}`});updateRouteVisibility(selectedTask.id);updateHUD();simulationStarted=true}
+    function updateHUD(){document.getElementById("hudPersona").textContent=selectedPersona?selectedPersona.name:"-";document.getElementById("hudTask").textContent=selectedTask?selectedTask.name:"-";document.getElementById("hudTime").textContent=state.time;document.getElementById("hudStress").textContent=state.stress;document.getElementById("hudScore").textContent=state.score;document.getElementById("hudEvents").textContent=state.eventsTriggered}
+    function showEvent(ev){currentEventLocked=true;const c=ev.getContent(selectedPersona.id);document.getElementById("eventTitle").textContent=c.title;document.getElementById("eventText").textContent=c.text;const choices=document.getElementById("eventChoices");choices.innerHTML="";c.choices.forEach(choice=>{const b=document.createElement("button");b.textContent=choice.label;b.onclick=()=>applyChoice(ev,choice);choices.appendChild(b)});eventPanel.style.display="block"}
+    function applyChoice(ev,choice){state.time+=choice.time;state.stress=Math.min(10,Math.max(0,state.stress+choice.stress));state.score=Math.min(10,Math.max(0,state.score+choice.score));state.eventsTriggered+=1;state.barriers.push({id:ev.id,type:ev.barrierType,title:ev.title,note:choice.note,impact:Math.abs(choice.score)+choice.stress+choice.time*.2});ev.triggered=true;if(markerMap[ev.id])markerMap[ev.id].setAttribute("visible","false");eventPanel.style.display="none";currentEventLocked=false;updateHUD()}
+    function getPlayerPosition(){return playerCamera.getAttribute("position")}function distance2D(x1,z1,x2,z2){const dx=x1-x2,dz=z1-z2;return Math.sqrt(dx*dx+dz*dz)}
+    function checkTriggers(){if(!simulationStarted||resultShown||currentEventLocked)return;const p=getPlayerPosition();for(const ev of routeEvents){if(ev.triggered||!ev.tasks.includes(selectedTask.id))continue;if(distance2D(p.x,p.z,ev.x,ev.z)<4.5){showEvent(ev);break}}}
+    function checkGoal(){if(!simulationStarted||resultShown||currentEventLocked)return;const p=getPlayerPosition();if(distance2D(p.x,p.z,selectedTask.goalPosition.x,selectedTask.goalPosition.z)<7)finishGame()}
+function finishGame(){resultShown=true;simulationStarted=false;hud.style.display="none";tipsBox.style.display="none";crosshair.style.display="none";updateRouteVisibility();const scoreText=state.score>=8?"relatively friendly":state.score>=5?"partly accessible but uneven":"clearly unfriendly for this persona";document.getElementById("resultSummary").innerHTML=`As a <strong>${selectedPersona.name}</strong>, you completed the task <strong>${selectedTask.name}</strong>. Your final travel time was <strong>${state.time}</strong>, your stress level was <strong>${state.stress}/10</strong>, and your city friendliness score was <strong>${state.score}/10</strong>. For this persona, Stardew City felt <strong>${scoreText}</strong>.`;buildAdvisorReport();resultPanel.style.display="block"}
+    function buildAdvisorReport(){const sorted=[...state.barriers].sort((a,b)=>b.impact-a.impact).slice(0,4);document.getElementById("advisorIntro").textContent=`From the perspective of an urban planning advisor, the major difficulties for ${selectedPersona.name} were concentrated in a few specific design conditions rather than spread evenly across the city.`;const advisorList=document.getElementById("advisorList");advisorList.innerHTML="";if(!sorted.length){const li=document.createElement("li");li.textContent="This route generated few strong barriers for the selected persona.";advisorList.appendChild(li)}else{sorted.forEach((b,i)=>{const li=document.createElement("li"),gain=Math.min(3,Math.max(1,Math.round(b.impact/2)));li.innerHTML=`<strong>${i+1}. ${b.title}</strong> — ${b.note}. If this issue were improved, the friendliness score could increase by about <strong>${gain}</strong> point(s).`;advisorList.appendChild(li)})}document.getElementById("advisorClosing").textContent="The route suggests a clear lesson: accessibility is cumulative. A city becomes inclusive when the whole journey works."}
+    function restartGame(){location.reload()}setInterval(()=>{checkTriggers();checkGoal()},220);
+  </script>
+</body>
+</html>
