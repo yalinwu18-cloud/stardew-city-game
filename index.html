@@ -16,6 +16,19 @@
     #hud,#tipsBox{position:absolute;z-index:15;background:rgba(244,247,251,.93);color:#13202d;border-radius:16px;padding:14px 16px;box-shadow:0 10px 28px rgba(0,0,0,.18);backdrop-filter:blur(10px);display:none}
     #hud{top:14px;left:14px;width:344px;line-height:1.55}#tipsBox{right:14px;top:14px;width:290px;font-size:14px;line-height:1.58}#goalHint{margin-top:10px;padding-top:10px;border-top:1px solid #d3dde6;font-size:14px;color:#425361}
     .advisorBox{background:linear-gradient(180deg,#f6f9fb,#f1f6fa);border:1px solid #dbe6ee;border-radius:14px;padding:14px;margin-top:14px}#crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid rgba(255,255,255,.92);border-radius:50%;z-index:12;pointer-events:none;display:none;box-shadow:0 0 12px rgba(255,255,255,.45)}
+    #musicCredit {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 30;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 8px;
+  border-radius: 6px;
+}
   </style>
 </head>
 <body>
@@ -63,7 +76,11 @@ function playMusic() {
   </div>
   <div id="tipsBox"><strong>Controls</strong><br/>W A S D = move<br/>Mouse = look around<br/>Blue arrows = route direction<br/>Red arrows = event points<br/>Yellow star = destination</div>
   <div id="crosshair"></div>
-
+<div id="musicCredit">
+  Music by: Bensound.com/royalty-free-music<br>
+  Artist: Yunior Arronte<br>
+  License code: HVOC4ULQZVR77ZAH
+</div>
   <a-scene fog="type: linear; color: #e0a57d; near: 95; far: 235" renderer="antialias: true; colorManagement: true">
     <a-sky color="#f0b183"></a-sky>
     <a-entity light="type: ambient; intensity: 0.78; color: #ffe2c4"></a-entity>
